@@ -318,6 +318,7 @@ def fake_tensor_prop(
     return fake_mode
 
 
+# The main compile function.
 @DebugContext.wrap
 @torch.utils._python_dispatch._disable_current_modes()
 @time_and_log(attr="compilation time (in seconds)")
@@ -386,9 +387,16 @@ def compile_fx_inner(
 
     start = time.time()
 
+<<<<<<< HEAD
     if config.fx_graph_cache and not aot_mode:
         compiled_graph = FxGraphCache.load(
             fx_codegen_and_compile, gm, example_inputs, graph_kwargs
+=======
+    # All of the graph compilation happens here.
+    if config.fx_graph_cache:
+        compiled_graph: CompiledFxGraph = FxGraphCache.load(
+            fx_codegen_and_compile, graph_args, graph_kwargs
+>>>>>>> ef1bbc109b3 (Restoring some of the prints from cs265)
         )
     else:
         compiled_graph = fx_codegen_and_compile(
@@ -523,6 +531,7 @@ def compile_fx_inner(
     return compiled_graph
 
 
+# Called from compile_fx_inner.
 def fx_codegen_and_compile(
     gm: torch.fx.GraphModule,
     example_inputs: List[torch.Tensor],
@@ -602,6 +611,8 @@ def fx_codegen_and_compile(
             is_inference=is_inference,
         )
         with V.set_graph_handler(graph):
+
+            # This generates the computation graph.
             graph.run(*example_inputs)
             output_strides: List[Optional[Tuple[int, ...]]] = []
             if graph.graph_outputs is not None:
@@ -617,6 +628,7 @@ def fx_codegen_and_compile(
                     else:
                         output_strides.append(None)
 
+            # This converts the ir.Buffer objects to an actual runnable function.
             compiled_fn = graph.compile_to_fn()
 
             if V.aot_compilation is True:

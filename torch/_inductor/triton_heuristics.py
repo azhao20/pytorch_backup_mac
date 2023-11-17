@@ -614,6 +614,9 @@ class DebugAutotuner(CachingAutotuner):
         super().run(*args, grid=grid, stream=stream)
         (launcher,) = self.launchers
 
+        ## TODO: where we print results.
+        return
+
         if self.cached is None:
             ms = self.bench(launcher, *args, grid=grid)
             num_in_out_ptrs = len(

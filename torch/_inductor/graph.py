@@ -105,6 +105,7 @@ def is_magic_method(op):
     return op in magic_ops
 
 
+# The object created from compile_fx
 class GraphLowering(torch.fx.Interpreter):
     def symbolic_sizes_strides(self, ex: torch.Tensor):
         """
@@ -251,6 +252,7 @@ class GraphLowering(torch.fx.Interpreter):
         if not config.layout_optimization:
             return False
 
+        # Convolution default nodes.
         conv_nodes = [
             n for n in gm.graph.nodes if n.target == torch.ops.aten.convolution.default
         ]
@@ -291,6 +293,8 @@ class GraphLowering(torch.fx.Interpreter):
                 "See perf regression with dynamic shape. Follow up in https://github.com/pytorch/pytorch/issues/102670"
             )
             return False
+        
+        # A bunch of heuristics based on convolution performance.
 
         # Channels last layout can dramatically hurt grouped conv perf. E.g.
         # Conv with arguments like
@@ -543,6 +547,8 @@ class GraphLowering(torch.fx.Interpreter):
             self.constants[alt_name] = self.constants[name].to(device_override)
         return alt_name
 
+    # These are the types of kernels that can be generated. Placeholder and call_function.
+
     def placeholder(self, target: str, args, kwargs):
         example = super().placeholder(target, args, kwargs)
         if isinstance(example, SymTypes):
@@ -712,6 +718,7 @@ class GraphLowering(torch.fx.Interpreter):
         finally:
             self.current_node = old
 
+    # Runs an individual node.
     def run_node(self, n: torch.fx.Node):
         def debug(msg):
             log.debug("lowering %s %s", LazyString(n.format_node), msg)
@@ -921,6 +928,7 @@ class GraphLowering(torch.fx.Interpreter):
         assert wrapper_code_gen_cls is not None, f"Device {device_type} not supported"
         self.wrapper_code = wrapper_code_gen_cls()
 
+    # Codegen?
     def codegen(self):
         from .scheduler import Scheduler
 
@@ -974,12 +982,17 @@ class GraphLowering(torch.fx.Interpreter):
         V.debug.copy(os.path.splitext(mod.__file__)[0] + ".debug")
         return mod
 
+    # Called after graph.run from compile_fx_inner.
+    # Inside the class GraphLowering.
     def compile_to_fn(self):
         if self.aot_mode and self.cpp_wrapper:
             from .codecache import AotCodeCache
 
+            # Generates the code.
             code, linemap = self.codegen()
             output_code_log.debug("Output code: \n%s", code)
+            
+            print(f"Output code: \n{code}")
 
             serialized_extern_kernel_nodes = None
             if (
