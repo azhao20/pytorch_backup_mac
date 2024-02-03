@@ -384,6 +384,7 @@ class CachingAutotuner(KernelInterface):
                 stream=stream,
             )
 
+        # AZ: seems like this is where we call bench for fused kernels.
         return do_bench(kernel_call, rep=40, fast_flush=True)
 
     def clone_args(self, *args, **kwargs) -> Tuple[List[Any], Dict[str, Any]]:
@@ -412,6 +413,14 @@ class CachingAutotuner(KernelInterface):
 
     @dynamo_timed
     def benchmark_all_configs(self, *args, **kwargs):
+
+        """
+        AZ: TODO: this logic seems important for picking a kernel.
+        If we disable this logic, what happens? In more complex cases,
+        it seems like we could actually choose the wrong kernel.
+        Therefore, probably want to insert nvtx ranges elsewhere.
+        QoTD: where do we generate the output?
+        """
         timings = {
             launcher: self.bench(launcher, *args, **kwargs)
             for launcher in self.launchers
@@ -613,6 +622,9 @@ class DebugAutotuner(CachingAutotuner):
             return
         super().run(*args, grid=grid, stream=stream)
         (launcher,) = self.launchers
+
+        # AZ: where we print results.
+        return
 
         if self.cached is None:
             ms = self.bench(launcher, *args, grid=grid)
